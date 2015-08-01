@@ -1,0 +1,16 @@
+#!/bin/bash
+# socksify with dsocks for OSX
+
+[ "${SOCKSIFY-unset}" = "unset" ] && export SOCKSIFY="127.0.0.1:1080"
+
+export DSOCKS_VERSION=5
+export DSOCKS_PROXY="${SOCKSIFY}"
+
+if [ `uname -s` = "Darwin" ]; then
+  # for MacOS X...
+  LIBDSOCKS=/usr/local/lib/libdsocks-x.dylib
+  DYLD_INSERT_LIBRARIES=$LIBDSOCKS DYLD_FORCE_FLAT_NAMESPACE=1 exec "$@"
+else
+  LIBDSOCKS=/usr/local/lib/libdsocks-x.so.1.0
+  LD_PRELOAD=$LIBDSOCKS exec "$@"
+fi

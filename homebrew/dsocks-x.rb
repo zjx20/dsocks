@@ -1,7 +1,6 @@
 require 'formula'
 
 class DsocksX < Formula
-  desc "SOCKS client wrapper for *BSD/OS X"
   homepage 'https://github.com/zjx20/dsocks/'
   head 'https://github.com/zjx20/dsocks.git', :branch => 'socksify'
 

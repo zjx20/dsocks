@@ -1,3 +1,18 @@
+socksify
+--------
+
+socksify is a lightweight version of dsocks.sh. it only supports socks5. 
+the default proxy is 127.0.0.1:1080, you can override it via SOCKSIFY environment variable. 
+
+usage examples:
+	socksify pip install pip --upgrade
+	SOCKSIFY="sock5proxy.com:3344" socksify git pull
+
+install on Mac OSX with brew:
+	brew install --HEAD https://raw.githubusercontent.com/zjx20/dsocks/socksify/homebrew/dsocks-x.rb
+	
+	# if you have trouble installing due to network, try proxying for brew
+	ALL_PROXY="socks5://yoursocks5proxy.com:3333" brew install --HEAD https://raw.githubusercontent.com/zjx20/dsocks/socksify/homebrew/dsocks-x.rb
 
 dsocks
 ------

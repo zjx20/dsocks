@@ -41,7 +41,7 @@ atomicio(f, fd, _s, n)
 	char *s = _s;
 	ssize_t res, pos = 0;
 
-	while (n > pos) {
+	while ((ssize_t)n > pos) {
 		res = (f) (fd, s + pos, n - pos);
 		switch (res) {
 		case -1:

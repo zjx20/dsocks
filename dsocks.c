@@ -79,7 +79,7 @@ _sin_aton(const char *str, struct sockaddr_in *sin, int default_port)
 	if ((p = tmp = strdup(str)) != NULL) {
 		ip = _inet_addr(strsep(&p, ":"));
 		port = p ? atoi(p) : default_port;
-		if (ip != -1 && port != 0) {
+		if (ip != INADDR_NONE && port != 0) {
 			sin->sin_family = AF_INET;
 #ifndef __linux__
 			sin->sin_len = sizeof(sin);
@@ -105,6 +105,7 @@ _sin_ntoa(struct sockaddr_in *sin)
 static int
 _dsocks4_connect(int fd, const struct sockaddr *sa, socklen_t slen)
 {
+	(void)slen; // unused parameter
 	struct sockaddr_in *sin = (struct sockaddr_in *)sa;
 	struct dsocks4_hdr *ds4;
 	char buf[sizeof(*ds4) + sizeof(_dsocks_user) + sizeof(_dsocks_host)];
@@ -116,11 +117,11 @@ _dsocks4_connect(int fd, const struct sockaddr *sa, socklen_t slen)
 	ds4->dport = sin->sin_port;
 	ds4->dst = sin->sin_addr.s_addr;
 	len = sizeof(*ds4);
-	len += strlcpy(buf + len, _dsocks_user, sizeof(_dsocks_user)) + 1;
+	len += strlcpy(buf + len, _dsocks_user, sizeof(buf) - len) + 1;
 	/* XXX - hidden service at 0.0.0.2 */
 	if (sin->sin_addr.s_addr == htonl(2)) {
 		len += strlcpy(buf + len, _dsocks_host,
-		    sizeof(_dsocks_host)) + 1;
+		    sizeof(buf) - len) + 1;
 		_dsocks_host[0] = '\0';
 	}
 	if (atomicio(write, fd, buf, len) != len) {
@@ -163,6 +164,7 @@ _dsocks5_error(int rep)
 static int
 _dsocks5_connect(int fd, const struct sockaddr *sa, socklen_t slen)
 {
+	(void)slen; // unused parameter
 	struct sockaddr_in *sin = (struct sockaddr_in *)sa;
 	struct dsocks5_auth auth[1];
 	struct dsocks5_msg msg[1];
@@ -269,7 +271,7 @@ _send_recv_timeout(int fd, int secs, void *ibuf, size_t ilen,
 	fd_set rfds;
 	int n;
 	
-	if ((n = send(fd, ibuf, ilen, 0)) == ilen) {
+	if ((n = send(fd, ibuf, ilen, 0)) == (ssize_t)ilen) {
 		tv.tv_sec = secs;
 		FD_ZERO(&rfds);
 		FD_SET(fd, &rfds);
@@ -518,18 +520,29 @@ _socks_gethostbyname(const char *name)
 	struct hostent *hp = NULL;
 	u_char buf[BUFSIZ];
 	int fd, n;
+	u_int16_t tmp;
 	
 	if ((n = res_mkquery(QUERY, name, C_IN, T_A, NULL, 0,
 		 NULL, buf + 2, sizeof(buf) - 2)) < 0)
 		return (NULL);
-	*(u_int16_t *)buf = htons(n);
+
+	/*
+	 * Original statement:
+	 *   *(u_int16_t *)buf = htons(n);
+	 *
+	 * Uses memcpy() to avoid the strict-aliasing warning
+	 **/
+	tmp = (u_int16_t)htons(n);
+	memcpy(buf, &tmp, 2);
 	
 	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) != -1) {
 		if (connect(fd, (struct sockaddr *)&_dsocks_ns,
 			sizeof(_dsocks_ns)) != -1) {
 			if ((n = _send_recv_timeout(fd, RES_TIMEOUT,
 				 buf, 2 + n, buf, sizeof(buf))) > 0) {
-				if (ntohs(*(u_int16_t *)buf) == n - 2) {
+				/* Uses memcpy() to avoid the strict-aliasing warning */
+				memcpy(&tmp, buf, 2);
+				if (ntohs((int)tmp) == n - 2) {
 					host.h_length = 4;
 					hp = _getanswer(buf + 2, n - 2,
 					    name, T_A);
